@@ -209,11 +209,14 @@ const ROUTES: (CableRoute & { name: string; description: string; contacts: strin
     id: 'hv-cable-battery',
     name: 'HV cable: battery to inverters',
     description:
-      'High-voltage DC bundle from the battery under the floor, through the bulkhead behind the seats and along the left of the engine to the inverters.',
+      'High-voltage DC bundle from the battery under the floor, under the fuel tank behind the seats and along the left of the engine to the inverters.',
     from: end('battery-pack', ZERO, batteryConnector(), false),
     to: end('inverter-l', ORIGIN, inverterConnector('l', 'frontInner'), true),
-    // Passes under the aux cable where both turn in to the inverter.
-    via: [v(0.06, 0.15, -0.24), v(0.22, 0.25, -0.3), v(0.36, 0.38, -0.36), v(0.4, 0.46, -0.5), v(0.4, 0.47, -0.8), v(0.38, 0.49, -1.0), v(0.3, 0.52, -1.12), v(0.12, 0.56, -1.14)],
+    // Clipped to the floor under the fuel tank and out past its end (the tank slides back
+    // over it in stage 5), then up the bay's front corner and under the aux cable where
+    // both turn in to the inverter.
+    pinned: [0, 1, 2, 3],
+    via: [v(0.04, 0.133, -0.24), v(0.16, 0.135, -0.315), v(0.42, 0.135, -0.35), v(0.5, 0.16, -0.38), v(0.47, 0.3, -0.4), v(0.42, 0.4, -0.44), v(0.4, 0.46, -0.5), v(0.4, 0.47, -0.8), v(0.38, 0.49, -1.0), v(0.3, 0.52, -1.12), v(0.12, 0.56, -1.14)],
     slack: v(0.5, 0.2, -0.1),
     slackPeak: 0.6,
     contacts: ['battery-pack', 'inverter-l', 'carbon-tub'],

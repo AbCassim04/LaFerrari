@@ -24,7 +24,10 @@ docs/BRIEF.md; read that first.
 - Overnight run reviewed and merged. Review fixes on `wip/2d` (2026-11-09): inspect
   isolation (other parts ghosted), deeper paint, car presets fitted to the car,
   screenshots no longer committed.
-- Next: 2d (radiators, fuel tank, rear subframe and suspension) on `wip/2d`.
+- **2d done on `wip/2d`** (not pushed): side-pod radiators, expansion tank, fuel tank,
+  pump and lines, rear subframe and bumper beam, rear suspension, discs, anti-roll bar
+  and brake hoses (25 parts). Figures and screenshots in docs/REVIEW.md.
+- Next: review 2d, then 2e (front axle and car-level parts) per docs/M2-PLAN.md.
 
 ## Run
 ```
@@ -49,8 +52,11 @@ source must be set to "GitHub Actions". Production builds use the base path
 - `src/config/scene.ts` — camera, controls, view presets, grid, shadows.
 - `src/parts/registry.ts` — all parts; `parts/body` (model parts), `parts/engine` (the
   V12: `layout.ts` bank frames and kinematics, `geometry/*` builders, `intakeExhaust.ts`
-  for 2b), `parts/drivetrain` (2c: transaxle, battery, driveshafts, `HvCable.tsx`),
-  `parts/powertrain.ts` (the assembly that lifts out). Types in `parts/types.ts`.
+  for 2b), `parts/drivetrain` (2c: transaxle, battery, driveshafts, `HvCable.tsx`:
+  re-curving cables and hoses, with optional pinned waypoints), `parts/cooling` (radiators,
+  expansion tank, coolant hoses), `parts/chassis` (2d: fuel system, rear subframe and
+  bumper beam, rear suspension and brakes), `parts/powertrain.ts` (the assembly that
+  lifts out). Types in `parts/types.ts`.
 - `src/geometry/build.ts` — geometry toolkit (extrude with exact bevels, lathe, merge,
   hulls, gears). `src/scene/MeshSet.tsx` — part builds from mesh specs (plain or
   instanced).
@@ -76,7 +82,12 @@ source must be set to "GitHub Actions". Production builds use the base path
 - `scripts/dev/check-headers.mjs` — exhaust primary clearance check
   (`node --import ./scripts/ts-hooks.mjs scripts/dev/check-headers.mjs`; the hooks file
   lets Node load the app's TypeScript modules).
-- `scripts/prep-body.mjs` + `scripts/body-rules.mjs` — body asset pipeline.
+- `scripts/prep-body.mjs` + `scripts/body-rules.mjs` — body asset pipeline (hidden
+  nodes: the original engine bay and rear discs).
+- Laying out new parts: `window.__slice({ axis, at, u, v, step, t, only, hide })` (dev)
+  prints an ASCII section of every part (ours and the model's) at timeline time `t`,
+  one letter per part; `scripts/dev/model-slices.mjs` does the same for the body model
+  alone in Node. Mid-explode checks: `?clashes=1&clashAt=<s>&clashFocus=<ids>`.
 
 ## Conventions
 - Car coordinates: metres, +Y up, +Z forward, +X = car's left, origin on the ground at

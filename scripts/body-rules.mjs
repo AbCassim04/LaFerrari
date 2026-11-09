@@ -59,6 +59,21 @@ const ROOF_TRAILING_EDGE = { x: [-0.46, 0.46], y: [0.9, 1.04], z: [-0.8, -0.55] 
 /** Hidden node holding the model's engine-bay dressing (kept as a dev reference). */
 export const MODEL_ENGINE_BAY = 'model-engine-bay';
 
+/**
+ * The rear brake discs are modelled inside the rear wheel meshes (two small pieces just
+ * inboard of the spokes). They go to a hidden node: our procedural discs replace them
+ * (milestone 2d). The front discs stay in the wheels until 2e builds theirs.
+ */
+export const MODEL_REAR_DISCS = 'model-rear-discs';
+const REAR_DISC = { absX: [0.77, 0.83], y: [0.15, 0.57], z: [-1.54, -1.11] };
+const isRearDisc = ({ box: b }) =>
+  (within(b.min.x, b.max.x, REAR_DISC.absX) || within(-b.max.x, -b.min.x, REAR_DISC.absX)) &&
+  within(b.min.y, b.max.y, REAR_DISC.y) &&
+  within(b.min.z, b.max.z, REAR_DISC.z);
+
+/** Model nodes that are never rendered (dev references only). */
+export const HIDDEN_NODES = [MODEL_ENGINE_BAY, MODEL_REAR_DISCS];
+
 export const RULES = [
   {
     id: 'engine-plate',
@@ -69,8 +84,9 @@ export const RULES = [
   {
     id: 'wheel',
     test: (c) => /3DWheel (Front|Rear) (L|R)/.test(c.path),
-    part: (c) => {
+    split: (piece, c) => {
       const [, fr, lr] = /3DWheel (Front|Rear) (L|R)/.exec(c.path);
+      if (fr === 'Rear' && isRearDisc(piece)) return MODEL_REAR_DISCS;
       return `wheel-${fr[0].toLowerCase()}${lr.toLowerCase()}`;
     },
   },

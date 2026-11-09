@@ -20,7 +20,7 @@ import { compactPrimitive, dedup, flatten, join, meshopt, prune, transformMesh }
 import { MeshoptEncoder } from 'meshoptimizer';
 import { Box3, BufferAttribute, BufferGeometry, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
-import { MODEL_ENGINE_BAY, RULES, classifyFallback } from './body-rules.mjs';
+import { HIDDEN_NODES, MODEL_ENGINE_BAY, MODEL_REAR_DISCS, RULES, classifyFallback } from './body-rules.mjs';
 
 const SRC = 'assets-src/models/body.glb';
 const OUT = 'public/models/body.opt.glb';
@@ -236,7 +236,7 @@ const doorR = hinge('door-r');
 
 /** The transaxle bay may not extend behind the rear crash structure region. */
 const DIMS_BODY_REAR_LIMIT = -2.15;
-const bvh = buildBvh(parts.filter((id) => !/^(wheel|caliper)-/.test(id) && id !== MODEL_ENGINE_BAY));
+const bvh = buildBvh(parts.filter((id) => !/^(wheel|caliper)-/.test(id) && !HIDDEN_NODES.includes(id)));
 // The model has no panel below the rear bulkhead, so without the firewall limit a box
 // could slide forward under the seats.
 const engineBay = measureBay(bvh, { front: +1, from: axleR, to: firewallZ, minHeight: 0.55, label: 'engine bay (tall core)' });
@@ -291,6 +291,10 @@ say(`## Hidden: ${MODEL_ENGINE_BAY}`);
 say(`The model's stand-in engine bay (plenum, airboxes, cables, ECUs, decorative plate, exhaust tips),`);
 say(`kept in the GLB as a dev reference but not rendered: our V12 and exhaust replace it.`);
 say(`${reportRows.filter((r) => r.part === MODEL_ENGINE_BAY).reduce((n, r) => n + r.tris, 0)} triangles from ${new Set(reportRows.filter((r) => r.part === MODEL_ENGINE_BAY).map((r) => r.name)).size} source meshes.`);
+say();
+say(`## Hidden: ${MODEL_REAR_DISCS}`);
+say(`The rear brake discs, modelled inside the rear wheel meshes; our procedural discs replace them.`);
+say(`${reportRows.filter((r) => r.part === MODEL_REAR_DISCS).reduce((n, r) => n + r.tris, 0)} triangles.`);
 if (dropped.length) {
   say();
   say(`## Dropped geometry`);

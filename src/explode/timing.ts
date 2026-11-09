@@ -56,3 +56,21 @@ export const HYBRID_DELAY = {
   eMotor: 0.2,
   inverters: 0.2,
 } as const;
+
+/**
+ * Stage-2 rear corners and side pods (s after the stage starts). Wheel, caliper, disc,
+ * upright and driveshaft start together, each travelling less than the part outboard of
+ * it, and the links follow (travelling less again).
+ */
+export const CORNER_DELAY = {
+  disc: 0,
+  upright: 0,
+  coilover: 0.15,
+  links: 0.2,
+  bumperBeam: 0.1,
+  radiators: 0.15,
+} as const;
+
+/** Stage 5: the fuel tank lifts out once the battery has started sliding away beneath it. */
+export const FUEL_DELAY = { tank: 0.1, pump: 0.3 } as const;
+

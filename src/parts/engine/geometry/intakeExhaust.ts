@@ -209,14 +209,22 @@ export function airboxMeshes(s: Side): MeshSpec[] {
   ];
 }
 
+/** Front end of a fuel rail (engine coordinates). */
+const fuelRailFront = (s: Side) => bankPoint(s, headDeckA + E.fuelRail.a, E.fuelRail.b, headZ(s)[1] + 0.02);
+
+/** End of a fuel rail's inlet tube (engine coordinates), where the feed line arrives, and the way the line leaves it. */
+export function fuelRailInlet(s: Side) {
+  return { at: fuelRailFront(s).add(new Vector3(0, 0.05, 0.025)), dir: new Vector3(0, 1, 0.17).normalize() };
+}
+
 export function fuelRailMeshes(s: Side): MeshSpec[] {
   const F = E.fuelRail;
   const a = headDeckA + F.a;
-  const [zr, zf] = headZ(s);
-  const p0 = bankPoint(s, a, F.b, zf + 0.02);
+  const [zr] = headZ(s);
+  const p0 = fuelRailFront(s);
   const p1 = bankPoint(s, a, F.b, zr);
   const rail = cylinderZ(F.radius, p1.z, p0.z, p0.x, p0.y, SEGMENTS.small * 2);
-  const inlet = tube([p0, p0.clone().add(new Vector3(0, 0.02, 0.02)), p0.clone().add(new Vector3(0, 0.05, 0.025))], F.radius * 0.6);
+  const inlet = tube([p0, p0.clone().add(new Vector3(0, 0.02, 0.02)), fuelRailInlet(s).at], F.radius * 0.6);
   const injector = cylinderY(F.injectorRadius, 0, F.injectorLength, SEGMENTS.small);
   const into = bankOutboard(s);
   const poses = CYLINDERS.map((i) => along(bankPoint(s, a, F.b, E.boreZ[s][i]), into));

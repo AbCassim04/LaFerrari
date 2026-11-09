@@ -145,11 +145,14 @@ Full text in the request of that date; the essentials:
 Stage 1: body. Engine cover first and highest (it's the reveal; it opens about its front
          hinge as it lifts), doors swing up, then roof/canopy, the other panels, and
          finally the rear clam (up and back) and the wing above it.
-Stage 2: wheels slide outward, suspension follows.
-Stage 3: engine + gearbox assembly rises out of the bay.
+Stage 2: wheels slide outward with the calipers, discs, uprights and driveshafts, the
+         links and coilovers follow; the radiators rise out of the side pods and the
+         rear bumper beam slides back. The subframe and anti-roll bar stay.
+Stage 3: engine + gearbox assembly rises out of the bay (the fuel lines ride it,
+         unclipping from the pump).
 Stage 4: engine teardown (see milestone 2 spec).
-Stage 5: e-motor slides rearward; inverters lift; battery slides out to the car's left
-         (open question below).
+Stage 5: e-motor slides rearward; inverters lift; battery slides out to the car's left;
+         the fuel tank slides back into the empty bay and its pump lifts off it.
 Second click: reverse timeline. Allow interruption mid-animation.
 
 ## Interaction & UI
@@ -400,3 +403,44 @@ Each was the most reasonable option at the time; all are easy to revisit.
 - GitHub Actions workflow .github/workflows/deploy.yml builds and deploys on every push
   to main (and on demand).
 
+
+**2026-11-09 (2d: radiators, fuel system, rear subframe and suspension; branch `wip/2d`)**
+- The model's rear brake discs are split off and hidden (`model-rear-discs`, 105
+  triangles per side); our ventilated, cross-drilled carbon-ceramic discs replace them
+  inside the model's calipers.
+- Radiators lie under the side-intake grilles, parallel to them, so the pod itself is
+  the duct; no pod panels needed hiding (M2 decision 2). The coolant hoses now end on
+  the radiators' outlets at the bay wall and re-curve as the radiators leave in stage 2
+  (out 0.3, up 0.45).
+- Expansion tank: left of the plenum cover above the cam cover, on short legs to the
+  cam cover's shoulder; it rides the engine and leaves in the teardown (out 0.3, up 0.2).
+  Placed inboard of a tub ledge and behind the roof-intake duct so it lifts clear of both.
+- Fuel tank: a prism in the slot behind the seats, its front face following the seat
+  backs, about 50 L (est; the real car's is larger, but that is what the slot in the
+  model holds). The roll structure covers its ends from above, so it can't lift out: in
+  stage 5 it slides back 0.5 into the bay the powertrain has left.
+- Fuel lines: rigid, one per bank (`fuel-line-l/r`), riding the fuel rails and unclipping
+  from the pump's quick connectors as the powertrain lifts. No re-curving line can reach
+  the rails, which end up in the middle of the exploded engine.
+- Cables can pin waypoints (`pinned` in a route): pinned points stay put, and each
+  stretch re-curves only with its own ends. The HV battery cable's run along the floor,
+  under the tank and out past its end, is pinned. Otherwise the inverter's lift pulled
+  it up into the tank, and the tank slides back over it. Re-routed for the tank.
+- Rear subframe: two welded tube ladders, one each side of the gearbox, outboard of the
+  exhaust and inboard of the wheelhouse liners. The rear post rakes forward over the
+  exhaust pipe climbing to the silencer. Bolted to the tub at the front and the model's
+  rear frame at the back; the bumper beam's crash cans bolt to the same frame. It stays.
+- Rear suspension: lower wishbone, upper link and toe link to the subframe, coilover
+  from the wishbone to the upper rail, cast upright with a bored bearing housing.
+  Joints stack vertically at the upright and the chassis pivots sit in clevises facing
+  along z, so every link slides straight out. The links cross the wheelhouse liner (M2
+  decision 2).
+- Explode distances: disc 0.45 with its caliper (it can't leave through the caliper's
+  bridge), upright 0.42 starting with it (the driveshaft's outer joint, going 0.35,
+  never catches it), wishbone and upper link 0.15, toe link 0.2, coilover 0.25, bumper
+  beam back 0.5 rising 0.04 over the diffuser's raised edge.
+- The anti-roll bar stays on the subframe: the floor is below it, diffuser strakes
+  behind, the catalysts ahead and the subframe's wishbone brackets above its arms.
+- Draw calls: the 2d parts use few materials each (bush housings in the arm's steel,
+  painted black straps and drop links, fins, collars and bolts baked into their part's
+  mesh), which keeps the exploded peak at the ~500 budget.

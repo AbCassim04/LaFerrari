@@ -549,6 +549,114 @@ const hybridInput = {
   },
 };
 
+/**
+ * 2d in car coordinates, left side (mirrored for the right): side-pod radiators, coolant
+ * expansion tank, fuel system, rear subframe and bumper beam, rear suspension and
+ * brakes. Laid out against slices of the body model and our parts (dev
+ * `window.__slice`, scripts/dev/model-slices.mjs): the subframe rails run outboard of
+ * the exhaust and inboard of the wheelhouse liner (x ≈ 0.61); the suspension crosses the
+ * liner and the bay side walls into the wheel, as the approved plan allows.
+ */
+const chassisInput = {
+  /**
+   * Radiators lie under the side-intake grilles, parallel to them (the grilles face up,
+   * out and slightly forward, rising toward the rear). `along`: the core's long axis,
+   * rising rearward; `normal`: out of the core toward the grille.
+   */
+  radiator: {
+    centre: [0.787, 0.437, -0.616] as Vec3,
+    along: [0.109, 0.571, -0.815] as Vec3,
+    normal: [0.54, 0.65, 0.53] as Vec3,
+    /** Core across × along, and thickness. */
+    core: [mm(190), mm(300), mm(34)] as Vec3,
+    /** End tanks at both ends of the core (along), and the outlet from the front tank. */
+    tank: { length: mm(26), radius: mm(24) },
+    fins: 30,
+    /** Outlet from the underside of the front tank, near its inboard end, down to the hose at the bay wall. */
+    outlet: { radius: mm(17), inboard: mm(55), via: [[0.676, 0.305, -0.5]] as readonly Vec3[] },
+  },
+  /**
+   * Expansion tank along z outboard of the plenum cover's left wall, above the cam cover
+   * (rides the engine); short legs at `legX` (just outboard of the coil packs) down to the
+   * cam cover's outer shoulder at `footY`. Inboard of the tub ledge at x 0.32 and behind
+   * the roof-intake duct, so it lifts clear of both.
+   */
+  coolantTank: { centre: [0.282, 0.7, -0.73] as Vec3, radius: mm(34), length: mm(140), capRadius: mm(19), capHeight: mm(13), legX: mm(263), footY: mm(598) },
+  /**
+   * Fuel tank in the slot behind the seats (the model has no bulkhead panel there): a
+   * prism whose front face follows the reclined seat backs, strapped to the tub, clear of
+   * the floor so the HV battery cable runs underneath it.
+   */
+  fuelTank: {
+    halfWidth: mm(440),
+    /** Section (y, z): bottom-front, bottom-rear, top-rear, top-front. */
+    section: [[0.17, -0.06], [0.17, -0.29], [0.52, -0.29], [0.52, -0.185]] as readonly (readonly [number, number])[],
+    corner: mm(30),
+    strapX: [-mm(250), mm(250)] as readonly number[],
+    strap: { width: mm(30), thickness: mm(3) },
+    /** Pump flange on the top, filler neck at the right end. */
+    pump: { x: mm(110), z: -0.235, radius: mm(52), height: mm(26) },
+    filler: { x: -mm(360), z: -0.23, radius: mm(30), height: mm(70) },
+  },
+  /** Feed lines over the front of the engine (car coordinates, left; ± 16 mm apart in x). */
+  fuelLine: { radius: mm(5), via: [[0.06, 0.65, -0.3]] as readonly Vec3[] },
+  rearSuspension: {
+    /** Subframe rails (x, y), from the front post to the rear post (z). */
+    upperRail: [mm(550), mm(585)] as const,
+    lowerRail: [mm(520), mm(225)] as const,
+    railZ: [-0.98, -1.64] as const,
+    /** The lower rail stops short so the rear post rakes forward over the exhaust pipe climbing to the silencer. */
+    lowerRailEnd: -1.58,
+    railRadius: mm(20),
+    /** Extra post between the rails, ahead of the driveshaft. */
+    midPostZ: -1.15,
+    /** Pickup points (left side). LJ/UJ/TJ: ball joints on the upright; LF/LR/UI/TI: chassis pivots. */
+    lowerJoint: [mm(690), mm(180), -1.33] as Vec3,
+    lowerFront: [mm(560), mm(205), -1.14] as Vec3,
+    lowerRear: [mm(560), mm(205), -1.5] as Vec3,
+    upperJoint: [mm(700), mm(545), -1.36] as Vec3,
+    upperInner: [mm(585), mm(560), -1.36] as Vec3,
+    toeJoint: [mm(690), mm(310), -1.51] as Vec3,
+    toeInner: [mm(565), mm(300), -1.54] as Vec3,
+    /** Coilover: lower eye on the wishbone's rear leg, top eye under the upper rail. */
+    coiloverBottom: [mm(621), mm(226), -1.42] as Vec3,
+    coiloverTop: [mm(560), mm(552), -1.46] as Vec3,
+    armRadius: mm(14),
+    linkRadius: mm(11),
+    jointRadius: mm(22),
+    jointHeight: mm(20),
+    bushRadius: mm(20),
+    bushLength: mm(36),
+    clevisPlate: mm(5),
+    /** The spring runs from the lower seat almost to the top eye (its length is capped by the unit's). */
+    spring: { radius: mm(42), wire: mm(6), coils: 7, length: mm(260) },
+    damper: { radius: mm(23), shaftRadius: mm(8), eyeRadius: mm(16) },
+    /** Upright: bearing housing (x span, radius) round the hub axis, cast web thickness. */
+    housing: { x: [mm(672), mm(775)] as const, radius: mm(62), bore: mm(30) },
+    web: { x: [mm(686), mm(722)] as const, armRadius: mm(22) },
+    /** Caliper lugs reaching the model caliper's inboard face. */
+    caliperLugs: { x: [mm(696), mm(726)] as const, z: -1.215, y: [mm(270), mm(480)] as readonly number[], size: [mm(36), mm(30)] as const },
+    hub: { radius: mm(45), flangeRadius: mm(75), x: [mm(775), mm(811)] as const, flange: mm(11), studs: 5, studCircle: mm(52) },
+    /** Carbon-ceramic disc: faces (x), friction ring radii, vanes, cross-drilling, bell. */
+    disc: {
+      x: [mm(782), mm(812)] as const,
+      innerRadius: mm(118),
+      vaneGap: mm(12),
+      vanes: 36,
+      holeRadius: mm(3.5),
+      holeRings: [mm(140), mm(155), mm(170)] as readonly number[],
+      holesPerRing: 24,
+      bell: { radius: mm(112), x: [mm(797), mm(817)] as const, face: mm(6), boreRadius: mm(36), bolts: 10, boltCircle: mm(92) },
+    },
+    /** Anti-roll bar under the gearbox casing (y), arms forward to drop links on the wishbones. */
+    antiRollBar: { y: mm(174), z: -1.66, halfWidth: mm(500), radius: mm(10), armEnd: [mm(580), mm(172), -1.475] as Vec3, bushX: mm(420) },
+    /** Brake hose from a chassis fitting on the lower rail to the caliper's inboard face. */
+    brakeLine: { radius: mm(3.5), from: [mm(540), mm(255), -1.08] as Vec3, to: [mm(726), mm(470), -1.165] as Vec3, via: [[0.6, 0.34, -1.1], [0.68, 0.44, -1.13]] as readonly Vec3[] },
+  },
+  /** Box-section bumper beam behind the e-motor, on crash cans off the model's rear frame. */
+  bumperBeam: { halfWidth: mm(540), y: [mm(405), mm(505)] as const, z: [-2.05, -1.99] as const, crashCanX: mm(470), crashCanZ: -1.92, bolts: 8 },
+};
+
 // ─── Derived ─────// ─── Derived ─────────────────────────────────────────────────────────────────
 
 const axle = { frontZ: wheelbase / 2, rearZ: -wheelbase / 2 };
@@ -680,6 +788,7 @@ export const DIMS = {
   },
   transaxle: transaxleInput,
   ...hybridInput,
+  ...chassisInput,
 } as const;
 
 const batteryClearOfBody = 0.25; // gap between exploded battery and the body side
@@ -752,6 +861,24 @@ export const EXPLODE = {
   },
   /** Stage 2: out of the gearbox before the powertrain lifts. */
   driveshaft: 0.35,
+  /**
+   * Stage 2, rear corners (out = away from the centreline). The disc stays in its caliper
+   * (both 0.45: a straight-line move can't take a disc out through the caliper's bridge).
+   * The upright starts with them and travels between the disc and the driveshaft (0.35),
+   * so every gap only grows; the links slide straight out of their clevises.
+   */
+  rearCorner: { upright: 0.42, disc: 0.45, lowerWishbone: 0.15, upperLink: 0.15, toeLink: 0.2, coilover: 0.25 },
+  /** Back, rising a little over the diffuser's raised rear edge. */
+  bumperBeam: [0, 0.04, -0.5] as Vec3,
+  /** Stage 2: up out of the side pod and outboard. */
+  radiator: [0.3, 0.45, 0] as Vec3,
+  /** Out and up, ahead of the left cam cover lifting along its bank. */
+  coolantTank: [0.3, 0.2, 0] as Vec3,
+  /**
+   * Stage 5: back into the empty engine bay (the powertrain has lifted out in stage 3).
+   * It can't lift straight up: the roll structure behind the seats covers its ends.
+   */
+  fuelTank: [0, 0.04, -0.5] as Vec3,
   battery: {
     /** Sits down onto the ground while sliding out past the car's left side. */
     drop: hybridInput.battery.bottomY,

@@ -63,6 +63,11 @@ export interface CableRoute {
   slack: Vector3;
   /** Where along the cable (0…1) the slack peaks; default the middle. */
   slackPeak?: number;
+  /**
+   * Indices into `via` of points clipped to the chassis: they stay put, each stretch
+   * between them re-curves only with its own ends, and the slack applies after the last.
+   */
+  pinned?: readonly number[];
 }
 
 const T = SEGMENTS.cable;
@@ -75,6 +80,7 @@ const LEAD = 0.05;
  * other, with clips) that re-curves every frame between its two ends. Each assembled waypoint is carried along
  * by a blend of the two ends' displacements (by its position along the route), so the
  * assembled route is exact and the cable follows its ends smoothly as they separate.
+ * Pinned waypoints stay put and split the blend into stretches between them.
  */
 export function cableBuild(route: CableRoute) {
   function Build() {
@@ -95,11 +101,29 @@ export function cableBuild(route: CableRoute) {
     return (
       <>
         <mesh geometry={state.geometry} material={getMaterial(state.style.material)} />
-        <instancedMesh ref={clipsRef} args={[state.clipGeometry, getMaterial(state.style.clipMaterial), state.clipAt.length]} />
+        {state.clipAt.length > 0 && (
+          <instancedMesh ref={clipsRef} args={[state.clipGeometry, getMaterial(state.style.clipMaterial), state.clipAt.length]} />
+        )}
       </>
     );
   }
   Build.displayName = `HvCable(${route.id})`;
+  return Build;
+}
+
+/** One part made of several cables (e.g. a line to each side), each re-curving on its own. */
+export function cablesBuild(name: string, routes: readonly CableRoute[]) {
+  const builds = routes.map(cableBuild);
+  function Build() {
+    return (
+      <>
+        {builds.map((B, i) => (
+          <B key={i} />
+        ))}
+      </>
+    );
+  }
+  Build.displayName = name;
   return Build;
 }
 
@@ -110,11 +134,19 @@ function createCable(route: CableRoute) {
   const leadA = from.at.clone().addScaledVector(from.dir, LEAD);
   const leadB = to.at.clone().addScaledVector(to.dir, LEAD);
   const assembled = [from.at, leadA, ...route.via, leadB, to.at];
-  // Position of each control point along the assembled route (0…1), for the blend.
+  // Anchors: the ends and any pinned waypoints (control-point indices).
+  const last = assembled.length - 1;
+  const anchors = [0, ...(route.pinned ?? []).map((i) => i + 2), last];
+  // Each control point's stretch (between anchors k and k+1) and its position along it (0…1).
   const cum = [0];
   for (let i = 1; i < assembled.length; i++) cum.push(cum[i - 1] + assembled[i].distanceTo(assembled[i - 1]));
-  const share = cum.map((c) => c / cum[cum.length - 1]);
-  const span = from.at.distanceTo(to.at);
+  const stretch = assembled.map((_, i) => Math.max(0, anchors.findIndex((a) => a >= i) - 1));
+  const share = assembled.map((_, i) => {
+    const [a, b] = [anchors[stretch[i]], anchors[stretch[i] + 1]];
+    return (cum[i] - cum[a]) / (cum[b] - cum[a] || 1);
+  });
+  const slackFrom = anchors[anchors.length - 2];
+  const span = assembled[slackFrom].distanceTo(to.at);
   // Slack profile sin(π s^k), with k putting the peak at slackPeak.
   const slackPower = Math.log(0.5) / Math.log(route.slackPeak ?? 0.5);
 
@@ -149,7 +181,7 @@ function createCable(route: CableRoute) {
   const localB = local(to);
   const nowA = new Vector3();
   const nowB = new Vector3();
-  const last = { a: new Vector3(NaN, 0, 0), b: new Vector3() };
+  const prev = { a: new Vector3(NaN, 0, 0), b: new Vector3() };
   const m = new Matrix4();
 
   /** World position of a cable end now (assembled position if its part isn't mounted). */
@@ -163,17 +195,20 @@ function createCable(route: CableRoute) {
   function update(clips: InstancedMesh | null) {
     endNow(from, localA, nowA);
     endNow(to, localB, nowB);
-    const still = nowA.distanceToSquared(last.a) < 1e-12 && nowB.distanceToSquared(last.b) < 1e-12;
+    const still = nowA.distanceToSquared(prev.a) < 1e-12 && nowB.distanceToSquared(prev.b) < 1e-12;
     if (still && (!clips || clips.userData.placed)) return;
     if (clips) clips.userData.placed = true;
-    last.a.copy(nowA);
-    last.b.copy(nowB);
-    const dA = nowA.clone().sub(from.at);
-    const dB = nowB.clone().sub(to.at);
-    const grown = MathUtils.clamp((nowA.distanceTo(nowB) - span) / DIMS.hvCable.slackGrowth, 0, 1);
-    const points = assembled.map((p, i) =>
-      p.clone().add(dA.clone().lerp(dB, share[i])).addScaledVector(route.slack, grown * Math.sin(Math.PI * share[i] ** slackPower)),
-    );
+    prev.a.copy(nowA);
+    prev.b.copy(nowB);
+    const zero = new Vector3();
+    const moved = (a: number) => (a === 0 ? nowA.clone().sub(from.at) : a === last ? nowB.clone().sub(to.at) : zero);
+    const slackStart = slackFrom === 0 ? nowA : assembled[slackFrom];
+    const grown = MathUtils.clamp((slackStart.distanceTo(nowB) - span) / DIMS.hvCable.slackGrowth, 0, 1);
+    const points = assembled.map((p, i) => {
+      const k = stretch[i];
+      const out = p.clone().add(moved(anchors[k]).clone().lerp(moved(anchors[k + 1]), share[i]));
+      return k === anchors.length - 2 ? out.addScaledVector(route.slack, grown * Math.sin(Math.PI * share[i] ** slackPower)) : out;
+    });
     const pts = new CatmullRomCurve3(points, false, 'centripetal').getSpacedPoints(T);
 
     // Parallel-transport frames along the centreline.

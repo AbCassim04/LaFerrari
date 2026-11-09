@@ -27,6 +27,7 @@ Budget: under ~1.5M triangles and ~500 draw calls for the whole scene.
 | 2 (2c) | 756k | 221 / 0.74M · 248 / 0.76M | 433 / 1.23M |
 | 3 (2f) | 695k | ≈285 / 0.68M · 305 / 0.70M | 400–493 / 0.91–1.20M |
 | 4 (M7) | 695k | 268 / 0.69M (panel open) · 278 / 0.69M (hover) · 301 / 0.74M (X-ray) | 408–484 / 0.93–1.22M (exploded, crankshaft inspected) |
+| 5 (2d, `wip/2d`) | 813k | 285 / 0.79M · 187 / 0.61M (exploded) · 305 / 0.81M (X-ray) | 495–505 / 1.42–1.43M (shadow-map frames), 415–425 / 1.13M (contact frames) |
 
 Phase 3 adds the post-processing passes (N8AO at half resolution, tone mapping, SMAA: a handful of full-screen draws) and still comes in lower than phase 2: the hidden internals were trimmed.
 Before phase 1 every frame re-rendered the shadow map, the contact shadows and a
@@ -194,6 +195,59 @@ corners of each part's own box instead of one box round everything (the exploded
 came out small in three-quarter views), and keeps the subject clear of the Explode/X-ray
 buttons. Saved views restore exactly, focal offset included.
 
+## 2d: radiators, fuel system, rear subframe and suspension (`wip/2d`)
+
+**Built** (25 parts; `src/parts/chassis/` and `src/parts/cooling/`, sizes in
+`DIMS.radiator/coolantTank/fuelTank/fuelLine/rearSuspension/bumperBeam`, explode in
+`EXPLODE.rearCorner` and friends, timing in `CORNER_DELAY` / `FUEL_DELAY`):
+- `radiator-l/r`: core, fins, end tanks and side frames under each side-intake grille,
+  parallel to it; an outlet pipe drops to the coolant hose at the bay wall (the hoses
+  now end there instead of on the tub).
+- `coolant-tank`: translucent header tank with a pressure cap, on short legs left of
+  the plenum cover.
+- `fuel-tank` (≈50 L, est), `fuel-pump` (flange, two vertical quick-connect outlets),
+  `fuel-line-l/r` (rigid, riding the fuel rails).
+- `rear-subframe` (two tube ladders, node collars, clevis brackets for every pivot,
+  bolted plates front and rear), `rear-bumper-beam` (box beam on crash cans).
+- Per side: `rear-upright` (cast arms to three ball joints and the caliper lugs, bored
+  bearing housing, hub), `rear-brake-disc` (two friction rings, 36 vanes, 72 cross-drilled
+  holes, aluminium bell on bobbins), `rear-lower-wishbone`, `rear-upper-link`,
+  `rear-toe-link`, `rear-coilover` (damper, spring, seats, eyes); plus
+  `rear-anti-roll-bar` (bar, bushes, clamps, drop links) and `brake-lines-rear`.
+- The model's rear discs are hidden; the HV battery cable is re-routed under and past
+  the tank with its floor run pinned (new `pinned` cable waypoints).
+
+**Gates**: typecheck and build pass. Clash check: assembled vs body none, exploded
+overlaps none. Our own parts touch nothing they don't list (`?clashes=all`). With the
+new parts' tub contacts stripped, the only tub contacts left are the designed ones: the
+links, coilovers and brake hoses crossing the wheelhouse liner, and the subframe and
+crash cans on the rear frame. Mid-explode sweeps (`clashAt`, focused on the new parts):
+stage 2 every 0.15 s from 0.85 to 1.8 s, the lift at 1.55–2.3 s, the teardown at
+2.4–3.3 s and stage 5 at 4.3–5.1 s, all clean except the pre-existing lift crossing
+below.
+
+**Pre-existing, found while sweeping**: the powertrain rises straight up, and around
+t ≈ 1.75–1.9 s its front (cam covers, timing cover and chains) passes through the
+roof-intake duct structure over the front of the bay (y ≈ 0.77–0.99, z −0.62…−0.30).
+The fuel lines riding the engine do the same. A short move back before the lift would
+avoid it; not changed here.
+
+**Performance** (1440×900; how it's measured: top of this file): scene 813k triangles
+(+117k for 2d, mostly the drilled ventilated discs, radiators, subframe and coilovers),
+290 meshes. Idle: engine view 285 calls / 0.79M, exploded engine view 187 / 0.61M,
+X-ray rear three-quarter 305 / 0.81M. Peak (`?perfPeak=1`, exploded): front and rear
+three-quarter 495–505 / 1.42–1.43M on shadow-map frames and 415–425 / 1.13M on
+contact-shadow frames; inspect isolation (rear upright) 180 / 0.44M. Triangles are
+under the budget, but the exploded peak sits at the ~500 draw-call budget, not under it.
+Getting there took merging the new parts' materials (72 → 33 meshes). Further cuts
+would mean dropping detail: the drilled holes, the black spring and the radiator core
+each cost a draw.
+
+**Screenshots** (scratchpad `review-2d/`, 1440×900): 01-xray-rear34, 02-exploded-rear34,
+03-corner-exploded, 04-suspension-solo, 05-pod-xray, 06-tank-xray, 07-inspect-disc,
+08-inspect-subframe, 09-inspect-coolant-tank, 10-inspect-radiator, 11-tank-in-bay,
+12-coilover-solo.
+
 ## Blocked
 None.
 
@@ -203,7 +257,7 @@ None.
 2. Look at the X-ray ghost look and the inspect framing on a real GPU at full frame rate
    (the review browser here runs at ~1 fps, so the camera eases were only checked with
    `?snap=1`).
-3. Continue milestone 2 with 2d (chassis and suspension) per docs/M2-PLAN.md; the
-   side-pod radiators the coolant hoses run to are still to come.
+3. Review 2d on `wip/2d` (section above), then continue with 2e (front axle and
+   car-level parts) per docs/M2-PLAN.md.
 4. Smaller follow-ups: cabin glass reads grey in the engine view under the new studio
    environment; the gear clusters are only visible in a future cutaway mode.

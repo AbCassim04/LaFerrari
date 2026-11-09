@@ -148,7 +148,78 @@ export function ClashCheck() {
     };
   }, [on]);
 
+  useEffect(() => {
+    Object.assign(window, { __slice: slice });
+  }, []);
+
   return null;
+}
+
+interface SliceOptions {
+  /** Slice normal and its position (car coordinates). */
+  axis: 'x' | 'y' | 'z';
+  at: number;
+  /** Ranges of the other two axes, in x, y, z order. */
+  u: [number, number];
+  v: [number, number];
+  step?: number;
+  /** Timeline time to pose (default: assembled). */
+  t?: number;
+  /** Part-id substrings to include / leave out. */
+  only?: string[];
+  hide?: string[];
+}
+
+/**
+ * Dev (`window.__slice`): an ASCII occupancy map of a slice through every part (ours and
+ * the body model's) in a given pose, one letter per part, for laying out new parts.
+ */
+async function slice(o: SliceOptions) {
+  const { MeshBVH } = await import('three-mesh-bvh');
+  const step = o.step ?? 0.02;
+  const tl = explodeTimeline.current;
+  const progress = tl?.progress() ?? 0;
+  tl?.time(o.t ?? 0);
+  syncDynamicParts();
+  const keep = (id: string) => (!o.only?.length || o.only.some((s) => id.includes(s))) && !o.hide?.some((s) => id.includes(s));
+  const items = collect(MeshBVH).filter((i) => keep(i.partId));
+  tl?.progress(progress);
+  syncDynamicParts();
+  const letters = new Map<string, string>();
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#$%&*+=@';
+  const letter = (id: string) => {
+    if (!letters.has(id)) letters.set(id, ALPHABET[letters.size % ALPHABET.length]);
+    return letters.get(id)!;
+  };
+  const cell = new Box3();
+  const inverse = new Matrix4();
+  const nu = Math.round((o.u[1] - o.u[0]) / step);
+  const nv = Math.round((o.v[1] - o.v[0]) / step);
+  const rows: string[] = [];
+  for (let j = nv - 1; j >= 0; j--) {
+    const v = o.v[0] + j * step;
+    let row = '';
+    for (let i = 0; i < nu; i++) {
+      const u = o.u[0] + i * step;
+      const lo = o.axis === 'z' ? [u, v, o.at - step / 2] : o.axis === 'x' ? [o.at - step / 2, v, u] : [u, o.at - step / 2, v];
+      const hi = o.axis === 'z' ? [u + step, v + step, o.at + step / 2] : o.axis === 'x' ? [o.at + step / 2, v + step, u + step] : [u + step, o.at + step / 2, v + step];
+      cell.min.fromArray(lo);
+      cell.max.fromArray(hi);
+      const hit = items.find((it) => {
+        if (!it.box.intersectsBox(cell)) return false;
+        // The cell is in world space; the BVH wants the transform from it into the mesh.
+        return it.bvh.intersectsBox(cell, inverse.copy(it.world).invert());
+      });
+      row += hit ? letter(hit.partId) : '.';
+    }
+    rows.push(`${v.toFixed(2).padStart(6)} ${row}`);
+  }
+  const [un, vn] = o.axis === 'z' ? ['x', 'y'] : o.axis === 'x' ? ['z', 'y'] : ['x', 'z'];
+  return [
+    `slice ${o.axis} = ${o.at} at t=${o.t ?? 0}: ${un} ${o.u[0]}…${o.u[1]} →, ${vn} ${o.v[0]}…${o.v[1]} ↑, step ${step}`,
+    ...rows,
+    [...letters].map(([id, l]) => `${l}=${id}`).join(' '),
+  ].join('\n');
 }
 
 const params = new URLSearchParams(location.search);
